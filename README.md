@@ -56,7 +56,7 @@ Changes are tracked as [GitHub releases](https://github.com/michaelben/Python-Tk
 
 Todos
 -----
-* Customize Entry Wiget to accommodate multilines and font/size change. Entry Widget only for one line and does not contain font change. Text Widget is too heavy and not compatible with Entry Widget.
+* Customize Entry Wiget to accommodate multilines and font/size change. Entry Widget only for one line and does not contain font change. Text Widget is too heavy and not compatible with Entry Widget. Need better font support from Tk.
 * Fixed and grouped columns
 * layout reflow
 * sorting/filting
