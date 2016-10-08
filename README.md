@@ -21,6 +21,7 @@ Getting started
 ```bash
     python TableWidget.py
 ```
+This result in ![screenshot][screenshot.png]
 
 ### Basic Example
 
