@@ -1,9 +1,10 @@
 import tkinter as tk
 from tkinter import ttk
+import tkinter.font as tkFont
 
 class TableFrame(tk.Frame):
     """A spreadsheet-like widget having a row header, a column header
-    and a table.
+    and a table with thousands of rows.
 
     """
 
@@ -29,10 +30,10 @@ class TableFrame(tk.Frame):
         # Frame does not support ScrollBar but Canvas does.
         # So, embed frame in canvas to use ScrollBar.
         self.canvas = canvas = MyCanvas(master=self, borderwidth=0, background="#d4d4d4")
-        self.rh_canvas = rh_canvas = MyCanvas(master=self, borderwidth=0,
-                                               width=40, background="#d4d4d4")
-        self.ch_canvas = ch_canvas = MyCanvas(master=self, borderwidth=0,
-                                               height=20, background="#d4d4d4")
+        self.rh_canvas = rh_canvas = MyCanvas(master=self, borderwidth=0
+                                               ,width=40, background="#d4d4d4")
+        self.ch_canvas = ch_canvas = MyCanvas(master=self, borderwidth=0
+                                               ,height=20, background="#d4d4d4")
 
         rh_canvas.grid(column=0, row=1, sticky='nsew')
         ch_canvas.grid(column=1, row=0, sticky='nsew')
@@ -78,6 +79,7 @@ class TableFrame(tk.Frame):
     ikeysdict = dict(zip(ikeys, keys))
 
     def get_ikeysdict(self, d):
+        """Convert from tk keys to internal format"""
         di = {}
         for key in d:
             ikey = self.keysdict.get(key)
@@ -89,6 +91,7 @@ class TableFrame(tk.Frame):
         return di
 
     def get_keysdict(self, d):
+        """Convert from internal format to tk keys"""
         di = {}
         for ikey in d:
             key = self.ikeysdict.get(ikey)
@@ -98,6 +101,15 @@ class TableFrame(tk.Frame):
                 di[ikey] = d[ikey]
 
         return di
+
+    def _update_geometry(self, d, default):
+        font = tkFont.Font(family=d.get('font', default['ft']))
+        nchars = d.get('width', default['w'])
+        nlines = d.get('height', default['h'])
+        w = self.get_width(font, nchars)
+        h = self.get_height(font, nlines)
+        d.update({'wp':w, 'hp':h})
+        return d
 
     def set_table_default(self, default={}, **kwargs):
         """set default cell value and cell attributes, for table.
@@ -109,9 +121,24 @@ class TableFrame(tk.Frame):
         """
         d = {}
         d.update(default, **kwargs)
-        di = self.get_ikeysdict(d)
+        di = self.get_ikeysdict(self._update_geometry(d, self.default))
 
         self.default.update(di)
+
+    def _update_header_geometry(self, header, default):
+        if default:
+            font = tkFont.Font(family=default['ft'])
+            nchars = default['w']
+            nlines = default['h']
+            w = self.get_width(font, nchars)
+            h = self.get_height(font, nlines)
+            header.configure(width=w, height=h)
+
+    def _update_row_header_geometry(self):
+        self._update_header_geometry(self.rh_canvas, self.row_default)
+
+    def _update_col_header_geometry(self):
+        self._update_header_geometry(self.ch_canvas, self.col_default)
 
     def set_row_default(self, default={}, **kwargs):
         """set default cell attributes, for row header.
@@ -123,9 +150,10 @@ class TableFrame(tk.Frame):
         """
         d = {}
         d.update(default, **kwargs)
-        di = self.get_ikeysdict(d)
+        di = self.get_ikeysdict(self._update_geometry(d, self.row_default))
 
         self.row_default.update(di)
+        self._update_row_header_geometry()
 
     def set_col_default(self, default={}, **kwargs):
         """set default cell attributes, for column header.
@@ -137,9 +165,10 @@ class TableFrame(tk.Frame):
         """
         d = {}
         d.update(default, **kwargs)
-        di = self.get_ikeysdict(d)
+        di = self.get_ikeysdict(self._update_geometry(d, self.col_default))
 
         self.col_default.update(di)
+        self._update_col_header_geometry()
 
     def set_value(self, row, col, value):
         self.table.set_value(row, col, value)
@@ -252,13 +281,15 @@ class TableFrame(tk.Frame):
 
     def on_frame_configure(self, event):
         """Reset the scroll region to encompass the inner frame"""
-        self.table.lower(self.rh_canvas)
-        self.table.lower(self.ch_canvas)
         self.table.lift(self.canvas)
         self.row_header.lift(self.rh_canvas)
         self.col_header.lift(self.ch_canvas)
+        self.table.lower(self.rh_canvas)
+        self.table.lower(self.ch_canvas)
         self.canvas.lower(self.vsb)
         self.canvas.lower(self.hsb)
+        self.hsb.lift(self.row_header)
+        self.vsb.lift(self.col_header)
 
         cell_w, cell_h = self.cell_geometry()
         self.visible_cols = int(event.width / cell_w) + 1
@@ -268,11 +299,6 @@ class TableFrame(tk.Frame):
             self.data_rows = len(self.data)
         if self.data and self.data[0]:
             self.data_cols = len(self.data[0])
-
-        print(event.width, event.height)
-        print(cell_w, cell_h)
-        print(self.visible_rows, self.visible_cols)
-        print(self.count_row(), self.count_col())
 
         self._resync()
 
@@ -338,9 +364,6 @@ class TableFrame(tk.Frame):
         if not count > 0:
             return
 
-        # if not self.table.count_row():  # No cell exists.
-        #     self.col_header.insert_col(0)
-
         self.row_header.insert_row(pos, count)
         self.table.insert_row(pos, count, text)
 
@@ -349,9 +372,6 @@ class TableFrame(tk.Frame):
 
         if not count > 0:
             return
-
-        # if not self.table.count_col():  # No cell exists.
-        #     self.row_header.insert_row(0)
 
         self.col_header.insert_col(pos, count)
         self.table.insert_col(pos, count, text)
@@ -445,8 +465,6 @@ class TableFrame(tk.Frame):
         self.offset_x = offset_x
         self.offset_y = offset_y
 
-        print(self.visible_rows, self.visible_cols)
-
         if not self.table.cells:
             for i in range(self.visible_cols):
                 self.insert_col(i)
@@ -506,15 +524,26 @@ class TableFrame(tk.Frame):
 
     dummy_cell = None
     CELL_WIDTH = 5 # 5 characters
+    CELL_HEIGHT = 1 # 1 line
     def _dummy_cell(self):
         if self.dummy_cell == None:
-            self.dummy_cell = tk.Entry(self,
+            self.dummy_cell = tk.Frame(self,
+                        background="#bbbbbb",
+                        highlightcolor="#ff0000",
+                        cursor="left_ptr",
+                        relief="flat")
+            self.dummy_cell.entry = tk.Entry(self.dummy_cell,
                         readonlybackground="#bbbbbb",
                         width=self.CELL_WIDTH,
+                        bd=0,
                         state="readonly",
                         highlightcolor="#ff0000",
                         cursor="left_ptr",
                         relief="flat")
+            font = tkFont.Font(family=self.dummy_cell.entry.cget('font'))
+            self.dummy_cell.configure(width=self.get_width(font, self.CELL_WIDTH))
+            self.dummy_cell.configure(height=self.get_height(font, self.CELL_HEIGHT))
+            self.dummy_cell.grid_propagate(0)
 
     def cell_geometry(self):
         self._dummy_cell()
@@ -523,13 +552,38 @@ class TableFrame(tk.Frame):
 
     def cell_options_default(self):
         self._dummy_cell()
-        options_default = self.dummy_cell.configure()
+        w = self.dummy_cell.cget('width') # width in pixel
+        h = self.dummy_cell.cget('height') # height in pixel
+        options_default = self.dummy_cell.entry.configure()
         bg = options_default.pop('background', None)
         options_default['bg'] = bg
         fg = options_default.pop('foreground', None)
         options_default['fg'] = fg
-        keys = self.keys + ['readonlybackground', 'highlightcolor', 'cursor', 'relief']
-        return {k:options_default[k][-1] for k in options_default if len(options_default[k]) == 5 and k in keys}
+        keys = self.keys + ['readonlybackground', 'highlightcolor', 'cursor', 'relief', 'bd']
+        d = {k:options_default[k][-1] for k in options_default if len(options_default[k]) == 5 and k in keys}
+        d.update({'wp':w, 'hp':h, 'height':1})
+        return d
+
+    def get_nchars(self, font, width):
+        """get the number of chars for the width in pixels"""
+        #w = max(font.measure('m'), font.measure('W'))
+        w = font.measure('1')
+        return int(width/w + 1) + 2
+
+    def get_nlines(self, font, height):
+        """get the number of lines for the height in pixels"""
+        h = font.metrics()['linespace']
+        return int(height/h) + 1
+
+    def get_width(self, font, nchars):
+        """get the width in pixels for number of chars"""
+        w = max(font.measure('m'), font.measure('W'))
+        return nchars * w
+
+    def get_height(self, font, nlines):
+        """get the height in pixels for number of lines"""
+        h = font.metrics()['linespace']
+        return nlines * h
 
 
 class MyCanvas(tk.Canvas):
@@ -633,15 +687,10 @@ class Cells(tk.Frame):
 
     def count_row(self):
         """Count rows or nodes"""
-        #return len(self.cells)
         return self._row_count
 
     def count_col(self):
         """Count rows or nodes"""
-        # if self.cells:
-        #     return len(self.cells[0])
-        # else:
-        #     return 0
         return self._col_count
 
     def set_row_count(self, count):
@@ -649,6 +698,36 @@ class Cells(tk.Frame):
 
     def set_col_count(self, count):
         self._col_count = count
+
+    def _update_col_geometry(self, d, default):
+        d.pop('font', None) # forbid to change font on specifc col
+        d.pop('height', None) # forbid to change height on specifc col
+        if default:
+            font = tkFont.Font(family=default['ft'])
+            nchars = d.get('width', default['w'])
+            w = self.master.get_width(font, nchars)
+            d.update({'wp':w})
+
+            # precompute the default geometry for cells
+            font = tkFont.Font(family=self.master.default['ft'])
+            cell_nchars = self.master.get_nchars(font, w)
+            d.update({'cell_w':cell_nchars})
+        return d
+
+    def _update_row_geometry(self, d, default):
+        d.pop('font', None) # forbid to change font on specifc row
+        d.pop('width', None) # forbid to change width on specifc row
+        if default:
+            font = tkFont.Font(family=default['ft'])
+            nlines = d.get('height', default['h'])
+            h = self.master.get_height(font, nlines)
+            d.update({'hp':h})
+
+            # precompute the default geometry for cells
+            font = tkFont.Font(family=self.master.default['ft'])
+            cell_nlines = self.master.get_nlines(font, h)
+            d.update({'cell_h':cell_nlines})
+        return d
 
     def set_row_defaults(self, row, default={}, **kwargs):
         """set default cell vaule and cell attributes, 
@@ -660,18 +739,19 @@ class Cells(tk.Frame):
         if row < self.master.data_rows:
             d = {}
             d.update(default, **kwargs)
-            di = self.master.get_ikeysdict(d)
 
             if not self.row_defaults:
-                self.row_defaults = [[None]] * (row + 1)
+                self.row_defaults = [[None] for i in range(row + 1)]
 
             if len(self.row_defaults) < row:
-                self.row_defaults.extend([[None]]*(row-len(self.row_defaults)+1))
+                self.row_defaults.extend([[None] for i in range(row-len(self.row_defaults)+1)])
 
             if not self.row_defaults[row][0]:
                 self.row_defaults[row][0] = {}
 
-            self.row_defaults[row][0].update(di)
+            rd = self.row_defaults[row][0]
+            dd = rd if rd else self.master.row_default
+            rd.update(self.master.get_ikeysdict(self._update_row_geometry(d, dd)))
 
     def set_col_defaults(self, col, default={}, **kwargs):
         """set default cell vaule and cell attributes, 
@@ -683,7 +763,6 @@ class Cells(tk.Frame):
         if col < self.master.data_cols:
             d = {}
             d.update(default, **kwargs)
-            di = self.master.get_ikeysdict(d)
 
             if not self.col_defaults:
                 self.col_defaults = [None] * (col + 1)
@@ -694,7 +773,9 @@ class Cells(tk.Frame):
             if not self.col_defaults[col]:
                 self.col_defaults[col] = {}
 
-            self.col_defaults[col].update(di)
+            cd = self.col_defaults[col]
+            dd = cd if cd else self.master.col_default
+            cd.update(self.master.get_ikeysdict(self._update_col_geometry(d, dd)))
 
     def _set_cell_value(self, cell, value):
         last_state = cell.cget("state")
@@ -709,13 +790,7 @@ class Cells(tk.Frame):
         (row, col) are relative to the on-screen grid left-top corner.
         """
         cell = self.cells[row][col]
-        self._set_cell_value(cell, value)
-
-    def get_nchars(self, width):
-        """get the number of chars for the width in pixels"""
-
-    def get_nlines(self, height):
-        """get the number of lines for the height in pixels"""
+        self._set_cell_value(cell.entry, value)
 
     def _set_attrs(self, row, col, attrs):
         """Set attrs to an on-screen grid cell.
@@ -744,7 +819,8 @@ class Cells(tk.Frame):
         
         if bg:
             cell = self.cells[row][col]
-            state = cell.cget("state")
+            state = cell.entry.cget("state")
+            attrs['highlightbackground'] = bg
             if state == 'readonly':
                 attrs['readonlybackground'] = bg
             elif state == 'disabled':
@@ -987,41 +1063,62 @@ class Cells(tk.Frame):
 
         self._col_count += count
 
-        # if not self.cells:
-        #     row_count = 1
-        #     pos = 0
-        #     new_row = []
-        #     for col in range(count):
-        #         new_row.insert(pos, self._new_cell(text))
-        #
-        #     self.cells.insert(pos, new_row)
-        #
-        # else:
-        #     row_count = len(self.cells)
-        #     pos = max(min(len(self.cells[0]), pos), 0)
-        #
-        #     for row in self.cells:
-        #         for col in range(count):
-        #             row.insert(pos, self._new_cell(text))
-
         self.redraw()
 
     def _config(self, cell, conf, mode='internal'):
-        if isinstance(cell, tk.Entry):
-            conf.pop('height', None) #TclError: unknown option 'height' for Entry
-            conf.pop('h', None) #TclError: unknown option 'height' for Entry
-        if isinstance(cell, tk.Text):
-            conf.pop('justify', None) #TclError: unknown option 'justify' for Text
-            conf.pop('a', None) #TclError: unknown option 'justify' for Text
+        wp = conf.pop('wp', None)
+        hp = conf.pop('hp', None)
+        header = conf.pop('header', None)
+        width = conf.pop('cell_w', None)
+        height = conf.pop('cell_h', None)
 
+        if not header:
+            font = conf.get('font')
+            if font: # each table cell can change font but not geometry
+                # recalculate cell geometry based on headers
+                font = tkFont.Font(family=font)
+                if wp:
+                    conf['width'] = self.master.get_nchars(font, wp)
+                if hp:
+                    conf['height'] = self.master.get_nlines(font, hp)
+            else:
+                if width:
+                    conf['width'] = width
+                if height:
+                    conf['height'] = height
+
+        conf.pop('height', None) #TclError: unknown option 'height' for Entry
+        conf.pop('h', None) #TclError: unknown option 'height' for Entry
+
+        bg = conf.get('bg')
+        if bg:
+            cell.configure(bg=bg)
+        cell.configure(width=wp, height=hp)
+        cell.configure(width=wp, height=hp)
         if mode == 'internal':
-            cell.configure(**self.master.get_keysdict(conf))
+            cell.entry.configure(**self.master.get_keysdict(conf))
         else:
-            cell.configure(**conf)
+            cell.entry.configure(**conf)
 
     def _new_cell(self, text=None, mode='singleline'):
         if mode == 'singleline':
-            cell = tk.Entry(self)
+            # make each cell a Entry/Text widget inside a Frame so that 
+            # we can set width/height easily for the cell. 
+            # grid_propagate(0) does not restrict font changes.
+            cell = tk.Frame(self,
+                        background="#bbbbbb",
+                        highlightcolor="#ff0000",
+                        cursor="left_ptr",
+                        relief="flat")
+            cell.entry = tk.Entry(cell,
+                        readonlybackground="#222222",
+                        width=self.master.CELL_WIDTH,
+                        bd=0,
+                        state="readonly",
+                        highlightcolor="#ff0000",
+                        cursor="left_ptr",
+                        relief="flat")
+            cell.entry.grid(row=0, column=0)
         else:
             cell = tk.Text(self)
 
@@ -1029,12 +1126,9 @@ class Cells(tk.Frame):
         self._config(cell, self.master.default)
         cell.grid(padx=(0, 1), pady=(0, 1))
         if text:
-            _set_cell_value(cell, value)
+            _set_cell_value(cell.entry, value)
 
         # Force the widget size regardless of its content. 
-        # TODO: make each cell a Entry/Text widget inside a Frame so that 
-        # we can set width/height easily for the cell. 
-        # grid_propagate(0) does not restrict font changes.
         cell.grid_propagate(0)
 
         cell.bind("<MouseWheel>", self.master.on_mouse_scroll)
@@ -1043,14 +1137,6 @@ class Cells(tk.Frame):
         return cell
 
     def redraw(self):
-        #if isinstance(self.data, str):
-        #    print(self.data)
-        #    print(self.cells)
-        #    print('ismapped=', self.winfo_ismapped())
-        #    print('wmanager=', self.winfo_manager())
-        #    print('viewable=', self.winfo_viewable())
-        #    print('name=', self.winfo_name())
-        #    print('parent=', self.winfo_parent())
         for row in range(self.count_row()):
             for col in range(self.count_col()):
                 iy = col + self.master.offset_x
@@ -1064,6 +1150,7 @@ class Cells(tk.Frame):
                         cd.update(row_defaults[ix][0])
 
                     cd = self.master.get_keysdict(cd)
+                    cd.update({'header':True})
                     self._set_attrs(row, col, cd)
                 elif self.data == "col_header":
                     self.set_value(row, col, iy)
@@ -1074,6 +1161,7 @@ class Cells(tk.Frame):
                         cd.update(col_defaults[iy])
 
                     cd = self.master.get_keysdict(cd)
+                    cd.update({'header':True})
                     self._set_attrs(row, col, cd)
                 else:
                     if ix < len(self.data) and iy < len(self.data[0]):
@@ -1086,12 +1174,19 @@ class Cells(tk.Frame):
                                 c = {'v': c}
 
                         cd = self.master.default.copy()
+                        row_default = self.master.row_default
+                        col_default = self.master.col_default
                         row_defaults = self.master.row_header.row_defaults
                         if row_defaults and ix < len(row_defaults) and row_defaults[ix][0]:
                             cd.update(row_defaults[ix][0])
+                        else:
+                            cd.update({'hp':row_default['hp']})
+
                         col_defaults = self.master.col_header.col_defaults
                         if col_defaults and iy < len(col_defaults) and col_defaults[iy]:
                             cd.update(col_defaults[iy])
+                        else:
+                            cd.update({'wp':col_default['wp']})
                         cd.update(c)
                         c = self.master.get_keysdict(cd)
 
@@ -1100,6 +1195,7 @@ class Cells(tk.Frame):
                         elif self.data[ix][iy] == None:
                             self.clear_cell(row, col)
                         else:
+                            c.update({'header':False})
                             self.set_value_attrs(row, col, c)
 
                 self.cells[row][col].grid(row=row, column=col)
@@ -1152,7 +1248,7 @@ class Cells(tk.Frame):
         self.redraw()
 
     def clear_cell(self, row, col):
-        cell = self.cells[row][col]
+        cell = self.cells[row][col].entry
         last_state = cell.cget("state")
         cell.config(state="normal")
         cell.delete(0, tk.END)
@@ -1184,30 +1280,24 @@ def test_table_frame(data_size='small'):
             small_data[i].append(i*SMALL+j)
 
     root = tk.Tk()
-    #table_frame = TableFrame(root, data=large_data, data_rows=LARGE, data_cols=LARGE, offset_x=50, offset_y=40)
     table_frame = TableFrame(root)
     table_frame.pack(side="top", fill="both", expand=True)
 
     table_frame.set_data(large_data, data_rows=LARGE, data_cols=LARGE, offset_x=50, offset_y=40)
 
-    import tkinter.font as tkFont
-
     header_font = tkFont.Font(weight="bold")
 
     table_frame.set_table_default({})
-    #table_frame.set_row_default(font=header_font, justify="center", fg="#0000ff", bg='#00ffff')
-    #table_frame.set_col_default(font=header_font, justify="center", fg="#0000ff", bg='#00ffff')
-    table_frame.set_row_default(justify="center", fg="#0000ff", bg='#00ffff')
-    table_frame.set_col_default(justify="center", fg="#0000ff", bg='#00ffff')
+    table_frame.set_row_default(font=header_font, justify="center", fg="#0000ff", bg='#ffff00')
+    table_frame.set_col_default(font=header_font, justify="center", fg="#0000ff", bg='#00ffff')
 
-    #table_frame.row_header.set_row_defaults()
-    table_frame.col_header.set_col_defaults(56, width=12)
-    #table_frame.row_header.set_row_defaults(45, height=2)
+    table_frame.col_header.set_col_defaults(56, width=8) # in # chars
+    table_frame.row_header.set_row_defaults(45, height=2) # in # lines
 
     table_frame.table.set_data_attrs(45, 54, fg="#ff0000")
     table_frame.table.set_data_attrs(45, 55, fg="#00ff00")
     table_frame.table.set_data_attrs(45, 56, fg="#0000ff")
-    table_frame.table.set_data_value(45, 56, "testtesttest\ntesttesttest")
+    table_frame.table.set_data_value(45, 56, "testtesttesttesttest")
 
     def _on_mouse_press():
         large = False
