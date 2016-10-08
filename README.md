@@ -17,6 +17,11 @@ Features of Python-Tk-TableWidget:
 Getting started
 ---------------
 
+### Demo
+```bash
+    python TableWidget.py
+```
+
 ### Basic Example
 
 ```python
