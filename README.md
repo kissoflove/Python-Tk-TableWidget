@@ -21,7 +21,7 @@ Getting started
 ```bash
     python TableWidget.py
 ```
-This result in </a href="screenshot.png">screenshot</a>
+This result in ![screenshot](screenshot.png)
 
 ### Basic Example
 
