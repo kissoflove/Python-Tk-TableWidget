@@ -3,8 +3,7 @@ from tkinter import ttk
 
 class TableFrame(tk.Frame):
     """A spreadsheet-like widget having a row header, a column header
-    and a table with thousands of rows.
-
+    and a table with thousands of rows and columns.
     """
 
     def __init__(self, container, data=None, data_rows=None, data_cols=None, offset_x=0, offset_y=0, default=None):
@@ -1098,7 +1097,7 @@ class Cells(tk.Frame):
 
 def test_table_frame(data_size='small'):
 
-    LARGE = 100
+    LARGE = 2000
     SMALL = 5
 
     # initialize large data
