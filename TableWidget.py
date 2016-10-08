@@ -253,13 +253,15 @@ class TableFrame(tk.Frame):
 
     def on_frame_configure(self, event):
         """Reset the scroll region to encompass the inner frame"""
-        self.table.lower(self.rh_canvas)
-        self.table.lower(self.ch_canvas)
         self.table.lift(self.canvas)
         self.row_header.lift(self.rh_canvas)
         self.col_header.lift(self.ch_canvas)
+        self.table.lower(self.rh_canvas)
+        self.table.lower(self.ch_canvas)
         self.canvas.lower(self.vsb)
         self.canvas.lower(self.hsb)
+        self.vsb.lift(self.col_header)
+        self.hsb.lift(self.row_header)
 
         cell_w, cell_h = self.cell_geometry()
         self.visible_cols = int(event.width / cell_w) + 1
