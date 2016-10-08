@@ -3,7 +3,7 @@ from tkinter import ttk
 
 class TableFrame(tk.Frame):
     """A spreadsheet-like widget having a row header, a column header
-    and a table.
+    and a table with thousands of rows.
 
     """
 
@@ -78,6 +78,7 @@ class TableFrame(tk.Frame):
     ikeysdict = dict(zip(ikeys, keys))
 
     def get_ikeysdict(self, d):
+        '''Convert from tk keys to internal format'''
         di = {}
         for key in d:
             ikey = self.keysdict.get(key)
@@ -89,6 +90,7 @@ class TableFrame(tk.Frame):
         return di
 
     def get_keysdict(self, d):
+        '''Convert from internal format to tk keys'''
         di = {}
         for ikey in d:
             key = self.ikeysdict.get(ikey)
@@ -269,11 +271,6 @@ class TableFrame(tk.Frame):
         if self.data and self.data[0]:
             self.data_cols = len(self.data[0])
 
-        print(event.width, event.height)
-        print(cell_w, cell_h)
-        print(self.visible_rows, self.visible_cols)
-        print(self.count_row(), self.count_col())
-
         self._resync()
 
         self.rh_canvas.grid(column=0, row=1, sticky='nsew')
@@ -338,9 +335,6 @@ class TableFrame(tk.Frame):
         if not count > 0:
             return
 
-        # if not self.table.count_row():  # No cell exists.
-        #     self.col_header.insert_col(0)
-
         self.row_header.insert_row(pos, count)
         self.table.insert_row(pos, count, text)
 
@@ -349,9 +343,6 @@ class TableFrame(tk.Frame):
 
         if not count > 0:
             return
-
-        # if not self.table.count_col():  # No cell exists.
-        #     self.row_header.insert_row(0)
 
         self.col_header.insert_col(pos, count)
         self.table.insert_col(pos, count, text)
@@ -390,8 +381,6 @@ class TableFrame(tk.Frame):
             pass    # Do nothing.
 
     def count_row(self):
-        # If self.cells has at least one cell,
-        # Should be the same as self.cells.count_row().
         return self.row_header.count_row()
 
     def count_col(self):
@@ -444,8 +433,6 @@ class TableFrame(tk.Frame):
 
         self.offset_x = offset_x
         self.offset_y = offset_y
-
-        print(self.visible_rows, self.visible_cols)
 
         if not self.table.cells:
             for i in range(self.visible_cols):
@@ -633,15 +620,10 @@ class Cells(tk.Frame):
 
     def count_row(self):
         """Count rows or nodes"""
-        #return len(self.cells)
         return self._row_count
 
     def count_col(self):
         """Count rows or nodes"""
-        # if self.cells:
-        #     return len(self.cells[0])
-        # else:
-        #     return 0
         return self._col_count
 
     def set_row_count(self, count):
@@ -663,10 +645,10 @@ class Cells(tk.Frame):
             di = self.master.get_ikeysdict(d)
 
             if not self.row_defaults:
-                self.row_defaults = [[None]] * (row + 1)
+                self.row_defaults = [[None] for i in range(row + 1)]
 
             if len(self.row_defaults) < row:
-                self.row_defaults.extend([[None]]*(row-len(self.row_defaults)+1))
+                self.row_defaults.extend([[None] for i in range(row-len(self.row_defaults)+1)])
 
             if not self.row_defaults[row][0]:
                 self.row_defaults[row][0] = {}
@@ -722,24 +704,6 @@ class Cells(tk.Frame):
 
         (row, col) are relative to the on-screen grid left-top corner.
         """
-        #if 'width' in attrs.keys():
-        #    attrs['width'] = self.get_nchars(attrs['width'])
-        #if 'height' in attrs.keys():
-        #    attrs['height'] = self.get_nlines(attrs['height'])
-
-        #cell = self.cells[row][col]
-
-        #if 'height' in attrs.keys():
-        #    h = attrs['height']
-        #    if h == 1 and isinstance(cell, tk.Text):
-        #        self.cells[row][col] = self._new_cell()
-        #        cell.grid_remove()
-        #        cell.destroy()
-        #    elif h > 1 and isinstance(cell, tk.Entry):
-        #        self.cells[row][col] = self._new_cell(mode='multilines')
-        #        cell.grid_remove()
-        #        cell.destroy()
-
         bg = attrs.get('bg')
         
         if bg:
@@ -750,7 +714,6 @@ class Cells(tk.Frame):
             elif state == 'disabled':
                 attrs['disabledbackground'] = bg
 
-        #self.cells[row][col].configure(**attrs)
         self._config(self.cells[row][col], attrs, mode='tk')
 
     def _fill_empty(self, row, col):
@@ -953,11 +916,6 @@ class Cells(tk.Frame):
         if count < 1:
             raise ValueError
 
-        # if not self.cells:
-        #     col_count = 1
-        # else:
-        #     col_count = len(self.cells[0])
-
         pos = max(min(pos, self._row_count), 0)
 
         for r in range(count):
@@ -987,32 +945,15 @@ class Cells(tk.Frame):
 
         self._col_count += count
 
-        # if not self.cells:
-        #     row_count = 1
-        #     pos = 0
-        #     new_row = []
-        #     for col in range(count):
-        #         new_row.insert(pos, self._new_cell(text))
-        #
-        #     self.cells.insert(pos, new_row)
-        #
-        # else:
-        #     row_count = len(self.cells)
-        #     pos = max(min(len(self.cells[0]), pos), 0)
-        #
-        #     for row in self.cells:
-        #         for col in range(count):
-        #             row.insert(pos, self._new_cell(text))
-
         self.redraw()
 
     def _config(self, cell, conf, mode='internal'):
-        if isinstance(cell, tk.Entry):
-            conf.pop('height', None) #TclError: unknown option 'height' for Entry
-            conf.pop('h', None) #TclError: unknown option 'height' for Entry
-        if isinstance(cell, tk.Text):
-            conf.pop('justify', None) #TclError: unknown option 'justify' for Text
-            conf.pop('a', None) #TclError: unknown option 'justify' for Text
+        #if isinstance(cell, tk.Entry):
+        #    conf.pop('height', None) #TclError: unknown option 'height' for Entry
+        #    conf.pop('h', None) #TclError: unknown option 'height' for Entry
+        #if isinstance(cell, tk.Text):
+        #    conf.pop('justify', None) #TclError: unknown option 'justify' for Text
+        #    conf.pop('a', None) #TclError: unknown option 'justify' for Text
 
         if mode == 'internal':
             cell.configure(**self.master.get_keysdict(conf))
@@ -1025,16 +966,15 @@ class Cells(tk.Frame):
         else:
             cell = tk.Text(self)
 
-        #cell.configure(**self.master.get_keysdict(self.master.default))
         self._config(cell, self.master.default)
         cell.grid(padx=(0, 1), pady=(0, 1))
         if text:
             _set_cell_value(cell, value)
 
         # Force the widget size regardless of its content. 
-        # TODO: make each cell a Entry/Text widget inside a Frame so that 
-        # we can set width/height easily for the cell. 
-        # grid_propagate(0) does not restrict font changes.
+        # TODO: make a customized Entry widget to accomodate multilines
+        # and font/size chanages.
+        # grid_propagate(0) does not contain font changes.
         cell.grid_propagate(0)
 
         cell.bind("<MouseWheel>", self.master.on_mouse_scroll)
@@ -1043,14 +983,6 @@ class Cells(tk.Frame):
         return cell
 
     def redraw(self):
-        #if isinstance(self.data, str):
-        #    print(self.data)
-        #    print(self.cells)
-        #    print('ismapped=', self.winfo_ismapped())
-        #    print('wmanager=', self.winfo_manager())
-        #    print('viewable=', self.winfo_viewable())
-        #    print('name=', self.winfo_name())
-        #    print('parent=', self.winfo_parent())
         for row in range(self.count_row()):
             for col in range(self.count_col()):
                 iy = col + self.master.offset_x
@@ -1184,7 +1116,6 @@ def test_table_frame(data_size='small'):
             small_data[i].append(i*SMALL+j)
 
     root = tk.Tk()
-    #table_frame = TableFrame(root, data=large_data, data_rows=LARGE, data_cols=LARGE, offset_x=50, offset_y=40)
     table_frame = TableFrame(root)
     table_frame.pack(side="top", fill="both", expand=True)
 
@@ -1200,14 +1131,13 @@ def test_table_frame(data_size='small'):
     table_frame.set_row_default(justify="center", fg="#0000ff", bg='#00ffff')
     table_frame.set_col_default(justify="center", fg="#0000ff", bg='#00ffff')
 
-    #table_frame.row_header.set_row_defaults()
     table_frame.col_header.set_col_defaults(56, width=12)
     #table_frame.row_header.set_row_defaults(45, height=2)
 
     table_frame.table.set_data_attrs(45, 54, fg="#ff0000")
     table_frame.table.set_data_attrs(45, 55, fg="#00ff00")
     table_frame.table.set_data_attrs(45, 56, fg="#0000ff")
-    table_frame.table.set_data_value(45, 56, "testtesttest\ntesttesttest")
+    table_frame.table.set_data_value(45, 56, "testtesttesttesttest")
 
     def _on_mouse_press():
         large = False
